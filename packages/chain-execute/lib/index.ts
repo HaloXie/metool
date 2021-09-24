@@ -35,8 +35,8 @@ const isAsyncFunction = (
 ): fn is TAsyncFunction => type === EFnType.Async;
 
 //
-const _errorHandler = (error: Error): IResultObject => ({ success: false, error });
-const _successHandler = (data: unknown): IResultObject => ({ success: true, data });
+const _errorHandler = (error: Error): Omit<IResultObject, 'data'> => ({ success: false, error });
+const _successHandler = (data: unknown): Omit<IResultObject, 'error'> => ({ success: true, data });
 
 //
 export default class ChainWrapper {
@@ -59,16 +59,17 @@ export default class ChainWrapper {
 		return this;
 	}
 
-	async run(): Promise<unknown> {
-		let index = 0;
-		let task = this.funcs[index];
-		let prevResult: IResultObject = { success: false };
+	async execute(): Promise<IResultObject> {
+		let index = 0,
+			prevResult: IResultObject = { success: false };
 
-		while (task) {
-			// console.log(index, task, prevResult.success);
+		while (index < this.funcs.length) {
 			if (index && !prevResult.success) {
 				break;
 			}
+
+			const task = this.funcs[index];
+			console.log(index, task, prevResult);
 
 			const { type, fn, args = [], handler } = task;
 			const { errorHandler = _errorHandler, successHandler = _successHandler } = handler || {};
@@ -96,7 +97,7 @@ export default class ChainWrapper {
 					break;
 			}
 
-			task = this.funcs[index++];
+			index++;
 		}
 		return prevResult;
 	}

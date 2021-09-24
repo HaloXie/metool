@@ -1,7 +1,7 @@
 {
-  "name": "chain-next",
+  "name": "chain-execute",
   "version": "0.0.0",
-  "description": "execute functions in a order line",
+  "description": "Chain execution method",
   "keywords": [],
   "author": "Halo Xie",
   "license": "ISC",

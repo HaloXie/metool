@@ -6,9 +6,13 @@ const fnA = () => {
 	console.log(a);
 	return a + 'normal';
 };
-const fnB = (data, callback) => {
-	console.log(data);
-	callback(data === 1 ? new Error('fb1') : null, data);
+const fnB = (...data) => {
+	if (data && data.length) {
+		const callback = data[data.length - 1];
+		if (typeof callback === 'function') {
+			callback(data[0] === 1 ? new Error('fb1') : null, data.slice(0, data.length - 1));
+		}
+	}
 };
 const fnC = () =>
 	new Promise((resolve, reject) => {
@@ -19,9 +23,9 @@ const fnC = () =>
 	});
 
 describe('chain-next', () => {
-	it.skip('empty', () => {
+	it('empty', () => {
 		new ChainWrapper()
-			.run()
+			.execute()
 			.then(result => console.log(result))
 			.catch(error => console.log(error));
 	});
@@ -31,53 +35,75 @@ describe('chain-next', () => {
 				fn: fnA,
 				args: [],
 			})
-			.run()
+			.execute()
 			.then(result => console.log(result))
 			.catch(error => console.log(error));
 	});
-	it.skip('fnB', () => {
+	it('fnB 1', () => {
 		new ChainWrapper()
 			.callbackNext({
 				fn: fnB,
 				args: [0],
+				handler: {
+					successHandler: data => ({ success: true, data, data1: data }),
+				},
 			})
-			.run()
+			.execute()
 			.then(result => console.log(result))
 			.catch(error => console.log(error));
-
+	});
+	it('fnB 2', () => {
 		new ChainWrapper()
 			.callbackNext({
 				fn: fnB,
 				args: [1],
 			})
-			.run()
+			.execute()
 			.then(result => console.log(result))
 			.catch(error => console.log(error));
 	});
-	it.skip('fnC', () => {
-		new ChainWrapper()
+	it('fnC', async () => {
+		await new ChainWrapper()
 			.asyncNext({
 				fn: fnC,
 				args: [],
 			})
-			.run()
+			.execute()
 			.then(result => console.log(result))
 			.catch(error => console.log(error));
 	});
-	it.skip('All', () => {
-		new ChainWrapper()
+	it('All', async () => {
+		await new ChainWrapper()
 			.next({
 				fn: fnA,
 				args: [],
 			})
 			.asyncNext({
 				fn: fnC,
+				args: [],
 			})
-			.next({
+			.callbackNext({
+				fn: fnB,
+				args: [10],
+				handler: {
+					successHandler: data => ({ success: true, data, data1: data }),
+				},
+			})
+			.callbackNext({
+				fn: fnB,
+				args: [1],
+				handler: {
+					errorHandler: error => ({ success: false, error, data: 1 }),
+				},
+			})
+			.callbackNext({
 				fn: fnB,
 				args: [2],
+				handler: {
+					successHandler: data => ({ success: true, data, data1: data }),
+				},
 			})
-			.run()
+			.execute()
 			.then(result => console.log(result))
 			.catch(error => console.log(error));
 	});
