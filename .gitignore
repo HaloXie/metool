@@ -41,4 +41,10 @@ node_modules/
 
 # Build files
 build/
+dist/
+
 .nyc_output
+
+# lock files
+yarn.lock
+package-lock.json

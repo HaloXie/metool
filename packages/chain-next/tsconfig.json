@@ -7,7 +7,7 @@
     "moduleResolution": "node",
     "sourceMap": true,
     "declaration": true,
-    "outDir": "build",
+    "outDir": "dist",
     "baseUrl": "./",
     "lib": [
       "DOM",

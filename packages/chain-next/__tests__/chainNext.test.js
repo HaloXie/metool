@@ -1,5 +1,5 @@
 'use strict';
-const ChainWrapper = require('../build/index').default;
+const ChainWrapper = require('../dist/index').default;
 
 const a = 1;
 const fnA = () => {
