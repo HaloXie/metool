@@ -2,7 +2,6 @@
   "name": "metool",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "scripts": {
     "preinstall": "node -e \"if (!/yarn\\.js$/.test(process.env.npm_execpath)) {throw new Error('NPM is not recommended, use Yarn instead')}\"",
     "bootstrap": "lerna bootstrap"
