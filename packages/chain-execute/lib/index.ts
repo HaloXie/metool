@@ -27,6 +27,9 @@ interface IFuncObject {
 		successHandler: TSuccessHandler;
 	};
 }
+interface IOptions {
+	console: boolean;
+}
 
 //
 const isAsyncFunction = (
@@ -41,9 +44,11 @@ const _successHandler = (data: unknown): Omit<IResultObject, 'error'> => ({ succ
 //
 export default class ChainWrapper {
 	private funcs: IFuncObject[];
+	private options: Partial<IOptions>;
 
-	constructor() {
+	constructor(options: Partial<IOptions>) {
 		this.funcs = [];
+		this.options = options || {};
 	}
 
 	next(param: Omit<IFuncObject, 'type'>): this {
@@ -69,8 +74,6 @@ export default class ChainWrapper {
 			}
 
 			const task = this.funcs[index];
-			console.log(index, task, prevResult);
-
 			const { type, fn, args = [], handler } = task;
 			const { errorHandler = _errorHandler, successHandler = _successHandler } = handler || {};
 			switch (type) {
@@ -97,6 +100,9 @@ export default class ChainWrapper {
 					break;
 			}
 
+			if (this.options.console) {
+				console.log({ index, task, prevResult });
+			}
 			index++;
 		}
 		return prevResult;
