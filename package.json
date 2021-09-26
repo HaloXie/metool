@@ -16,9 +16,27 @@
     "preinstall": "node -e \"if (!/yarn\\.js$/.test(process.env.npm_execpath)) {throw new Error('NPM is not recommended, use Yarn instead')}\"",
     "bootstrap": "yarn install",
     "clean": "lerna clean --yes && yarn workspaces run clean",
-    "build": "lerna run --stream --sort build"
+    "build": "lerna run --stream --sort build",
+    "commit": "git-cz"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-lerna-changelog"
+    }
+  },
+  "husky": {
+    "hooks": {
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
+    }
   },
   "dependencies": {
     "lerna": "^4.0.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^13.1.0",
+    "@commitlint/config-conventional": "^13.1.0",
+    "commitizen": "^4.2.4",
+    "cz-lerna-changelog": "^2.0.3",
+    "husky": "^7.0.2"
   }
 }
