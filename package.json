@@ -2,16 +2,22 @@
   "name": "metool",
   "version": "1.0.0",
   "description": "",
-  "scripts": {
-    "preinstall": "node -e \"if (!/yarn\\.js$/.test(process.env.npm_execpath)) {throw new Error('NPM is not recommended, use Yarn instead')}\"",
-    "bootstrap": "lerna bootstrap"
-  },
   "repository": {
     "type": "git",
-    "url": "\"https://oauth2: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@github.com/HaloXie/metool.git \""
+    "url": "git+https:github.com/HaloXie/metool.git"
   },
-  "author": "",
+  "author": "Halo Xie",
   "license": "ISC",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "preinstall": "node -e \"if (!/yarn\\.js$/.test(process.env.npm_execpath)) {throw new Error('NPM is not recommended, use Yarn instead')}\"",
+    "bootstrap": "yarn install",
+    "clean": "lerna clean --yes && yarn workspaces run clean",
+    "build": "lerna run --stream --sort build"
+  },
   "dependencies": {
     "lerna": "^4.0.0"
   }

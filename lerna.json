@@ -4,17 +4,12 @@
   ],
   "npmClient": "yarn",
   "version": "0.0.2",
+  "useWorkspaces": true,
   "command": {
     "publish": {
       "ignoreChanges": [
         "ignored-file",
         "*.md"
-      ]
-    },
-    "bootstrap": {
-      "ignore": "component-*",
-      "npmClientArgs": [
-        "--no-package-lock"
       ]
     }
   }
