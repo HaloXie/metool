@@ -36,6 +36,8 @@
     "@commitlint/cli": "^13.1.0",
     "@commitlint/config-conventional": "^13.1.0",
     "commitizen": "^4.2.4",
+    "commitlint-config-cz": "^0.13.2",
+    "conventional-changelog-conventionalcommits": "^4.6.1",
     "cz-lerna-changelog": "^2.0.3",
     "husky": "^7.0.2"
   }

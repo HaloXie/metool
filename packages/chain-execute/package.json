@@ -8,19 +8,23 @@
   ],
   "author": "Halo Xie",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https:github.com/HaloXie/metool.git"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "directories": {
     "lib": "lib",
     "test": "__tests__"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https:github.com/HaloXie/metool.git"
-  },
+  "files": [
+    "dist/index.js",
+    "dist/index.d.ts"
+  ],
   "scripts": {
     "clean": "rimraf ./dist",
-    "build": "tsc",
+    "build": "yarn run clean && tsc",
     "test": "yarn build && jest"
   },
   "bugs": {
