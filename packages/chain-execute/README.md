@@ -8,7 +8,7 @@
 > 2. callbackNext：callback 方法
 > 3. asyncNext：异步方法
 
-### demo
+### chain-next
 
 ```JavaScript
 'use strict';
@@ -88,4 +88,61 @@ describe('chain-next', () => {
       */
 	});
 });
+```
+
+## interceptor 模块
+
+> 拦截器，分为全局拦截器和单个方法拦截器
+
+### 全局拦截器
+
+```typescript
+type TInterceptorGlobalFn = <T>(
+	previousResult: T,
+	currentIndex: number,
+	resultArray: T[]
+) => boolean;
+const result = await new ChainWrapper({
+	interceptor: (previousResult, currentIndex) => {
+		if (currentIndex > 0) {
+			return previousResult.success && previousResult.data.status;
+		}
+		return true;
+	},
+}).execute();
+```
+
+### 单个方法拦截器
+
+```typescript
+type TInterceptorFn = <T>(
+	previousResult: T,
+	currentResult: T,
+	currentIndex: number,
+	resultArray: T[]
+) => boolean;
+const result = await new ChainWrapper()
+	.next({
+		fn: fnA,
+		args: [],
+		interceptor: (previousResult, currentResult, currentIndex, resultArray) => {
+			return currentResult.success && currentResult.data.status;
+		},
+	})
+	.execute();
+```
+
+### ⚠️⚠️⚠️ 拦截器可以修改数据，谨慎使用
+
+```typescript
+const result = await new ChainWrapper()
+	.next({
+		fn: fnA,
+		args: [],
+		interceptor: (previousResult, currentResult, currentIndex, resultArray) => {
+			currentResult.data.status = true;
+			return currentResult.success && currentResult.data.status;
+		},
+	})
+	.execute();
 ```
