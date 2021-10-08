@@ -27,12 +27,8 @@ const fnC = data =>
 describe('chain-interceptor', () => {
 	it('global-interceptor', async () => {
 		const result = await new ChainWrapper({
-			interceptor: (previousResult, currentIndex) => {
-				if (currentIndex > 0) {
-					return previousResult.success && previousResult.data.status;
-				}
-				return true;
-			},
+			interceptor: (previousResult, currentIndex) =>
+				previousResult.success && previousResult.data.status,
 		})
 			.next({
 				fn: fnA,
@@ -51,9 +47,8 @@ describe('chain-interceptor', () => {
 			.next({
 				fn: fnA,
 				args: [],
-				interceptor: (previousResult, currentResult, currentIndex, resultArray) => {
-					return currentResult.success && currentResult.data.status;
-				},
+				interceptor: (previousResult, currentResult, currentIndex, resultArray) =>
+					currentResult.success && currentResult.data.status,
 			})
 			.callbackNext({
 				fn: fnB,
@@ -65,13 +60,8 @@ describe('chain-interceptor', () => {
 	});
 	it('functional-interceptor-changeResult', async () => {
 		const result = await new ChainWrapper({
-			interceptor: (previousResult, currentIndex) => {
-				if (currentIndex > 0) {
-					console.log(previousResult);
-					return previousResult.success && previousResult.data.status;
-				}
-				return true;
-			},
+			interceptor: (previousResult, currentIndex) =>
+				previousResult.success && previousResult.data.status,
 		})
 			.next({
 				fn: fnA,

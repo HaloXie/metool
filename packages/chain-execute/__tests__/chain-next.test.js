@@ -21,26 +21,41 @@ const fnC = () =>
 			resolve(3);
 		}, 200);
 	});
+const fnD = data => {
+	console.log(data);
+};
 
 describe('chain-next', () => {
-	it('empty', () => {
-		new ChainWrapper()
-			.execute()
-			.then(result => console.log(result))
-			.catch(error => console.log(error));
+	it('empty', async () => {
+		const result = await new ChainWrapper().execute();
+
+		// console.log(result);
+		expect(result).toEqual({ success: true, data: undefined });
 	});
-	it('fnA', () => {
-		new ChainWrapper()
+	it('next', async () => {
+		const result = await new ChainWrapper()
 			.next({
 				fn: fnA,
 				args: [],
 			})
-			.execute()
-			.then(result => console.log(result))
-			.catch(error => console.log(error));
+			.execute();
+
+		// console.log(result);
+		expect(result).toEqual({ success: true, data: '1normal' });
 	});
-	it('fnB 1', () => {
-		new ChainWrapper()
+	it('next void-func', async () => {
+		const result = await new ChainWrapper()
+			.next({
+				fn: fnD,
+				args: [1],
+			})
+			.execute();
+
+		// console.log(result);
+		expect(result).toEqual({ success: true, data: undefined });
+	});
+	it('callbackNext normal single-param', async () => {
+		const result = await new ChainWrapper()
 			.callbackNext({
 				fn: fnB,
 				args: [0],
@@ -48,32 +63,48 @@ describe('chain-next', () => {
 					successHandler: data => ({ success: true, data, data1: data }),
 				},
 			})
-			.execute()
-			.then(result => console.log(result))
-			.catch(error => console.log(error));
+			.execute();
+
+		// console.log(result);
+		expect(result).toEqual({ success: true, data: [0], data1: [0] });
 	});
-	it('fnB 2', () => {
-		new ChainWrapper()
+	it('callbackNext normal multi-params ', async () => {
+		const result = await new ChainWrapper()
+			.callbackNext({
+				fn: fnB,
+				args: [0, 2, 3],
+			})
+			.execute();
+
+		// console.log(result);
+		expect(result).toEqual({ success: true, data: [0, 2, 3] });
+	});
+	it('callbackNext error', async () => {
+		const result = await new ChainWrapper()
 			.callbackNext({
 				fn: fnB,
 				args: [1],
 			})
-			.execute()
-			.then(result => console.log(result))
-			.catch(error => console.log(error));
+			.execute();
+
+		// console.log(result);
+		expect(result.success).toEqual(false);
+		expect(!!result.error).toEqual(true);
+		expect(result.error.message).toEqual('fb1');
 	});
-	it('fnC', async () => {
-		await new ChainWrapper()
+	it('asyncNext', async () => {
+		const result = await new ChainWrapper()
 			.asyncNext({
 				fn: fnC,
 				args: [],
 			})
-			.execute()
-			.then(result => console.log(result))
-			.catch(error => console.log(error));
+			.execute();
+
+		// console.log(result);
+		expect(result).toEqual({ success: true, data: 3 });
 	});
 	it('All', async () => {
-		await new ChainWrapper()
+		const result = await new ChainWrapper()
 			.next({
 				fn: fnA,
 				args: [],
@@ -103,8 +134,11 @@ describe('chain-next', () => {
 					successHandler: data => ({ success: true, data, data1: data }),
 				},
 			})
-			.execute()
-			.then(result => console.log(result))
-			.catch(error => console.log(error));
+			.execute();
+
+		// console.log(result);
+		expect(result.success).toEqual(false);
+		expect(!!result.error).toEqual(true);
+		expect(result.error.message).toEqual('fb1');
 	});
 });

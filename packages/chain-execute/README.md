@@ -1,6 +1,13 @@
 最终目标是链式的执行方法
 
-## chain-next 模块
+## Usage
+
+```JavaScript
+'use strict';
+const ChainWrapper = require('chain-execute').default;
+```
+
+## chain-next module
 
 > 目前包含三个方法
 >
@@ -8,17 +15,12 @@
 > 2. callbackNext：callback 方法
 > 3. asyncNext：异步方法
 
-### chain-next
+### common functions
 
 ```JavaScript
-'use strict';
-const ChainWrapper = require('chain-execute').default;
-
 const a = 1;
-const fnA = () => {
-	console.log(a);
-	return a + 'normal';
-};
+const fnA = () => { console.log(a); return a + 'normal';};
+
 const fnB = (...data) => {
 	if (data && data.length) {
 		const callback = data[data.length - 1];
@@ -27,74 +29,56 @@ const fnB = (...data) => {
 		}
 	}
 };
+
 const fnC = () =>
 	new Promise((resolve, reject) => {
-		setTimeout(() => {
-			console.log(3);
-			resolve(3);
-		}, 200);
+		setTimeout(() => {console.log(3);resolve(3);}, 200);
 	});
 
-describe('chain-next', () => {
-	it('empty', () => {
-		new ChainWrapper()
-			.execute()
-			.then(result => console.log(result))
-			.catch(error => console.log(error));
-
-		// console
-		// { success: false }
-	});
-	it('All', async () => {
-		await new ChainWrapper()
-			.next({
-				fn: fnA,
-				args: [],
-			})
-			.asyncNext({
-				fn: fnC,
-				args: [],
-			})
-			.callbackNext({
-				fn: fnB,
-				args: [10],
-				handler: {
-					successHandler: data => ({ success: true, data, data1: data }),
-				},
-			})
-			.callbackNext({
-				fn: fnB,
-				args: [1],
-				handler: {
-					errorHandler: error => ({ success: false, error, data: 1 }),
-				},
-			})
-			.callbackNext({
-				fn: fnB,
-				args: [2],
-				handler: {
-					successHandler: data => ({ success: true, data, data1: data }),
-				},
-			})
-			.execute()
-			.then(result => console.log(result))
-			.catch(error => console.log(error));
-
-      // console
-      /*
-        1
-        3
-        { success: false, error: Error: fb1 ..., data: 1 }
-      */
-	});
-});
+const fnD = data => { console.log(data);};
 ```
 
-## interceptor 模块
+### next
+
+```JavaScript
+// empty
+new ChainWrapper().execute(); // { success: true, data: undefined }
+
+new ChainWrapper().next({fn: fnA,args: [],}).execute(); // { success: true, data: '1normal' }
+
+// void
+new ChainWrapper().next({fn: fnD,args: [1],}).execute(); // { success: true, data: undefined }
+```
+
+### callbackNext
+
+```JavaScript
+new ChainWrapper().callbackNext({
+  fn: fnB,
+  args: [0],
+  handler: { successHandler: data => ({ success: true, data, data1: data }), },
+}).execute(); // { success: true, data: [0], data1: [0] }
+
+new ChainWrapper().callbackNext({fn: fnB,args: [0, 2, 3],}).execute(); // { success: true, data: [0, 2, 3] }
+
+// callback return error
+new ChainWrapper().callbackNext({fn: fnB,args: [1],}).execute() // { success: false, error: new Error("fb1")}
+```
+
+### asyncNext
+
+```JavaScript
+new ChainWrapper().asyncNext({fn: fnC,args: [],}).execute(); // { success: true, data: 3 }
+```
+
+## interceptor module
 
 > 拦截器，分为全局拦截器和单个方法拦截器
 
-### 全局拦截器
+### global interceptor
+
+> 这个会在每个方法执行之前执行，如果是第一个方法则不会执行
+> 该方法在程序验证 success 之后
 
 ```typescript
 type TInterceptorGlobalFn = <T>(
@@ -103,16 +87,14 @@ type TInterceptorGlobalFn = <T>(
 	resultArray: T[]
 ) => boolean;
 const result = await new ChainWrapper({
-	interceptor: (previousResult, currentIndex) => {
-		if (currentIndex > 0) {
-			return previousResult.success && previousResult.data.status;
-		}
-		return true;
-	},
+	interceptor: (previousResult, currentIndex) =>
+		previousResult.success && previousResult.data.status,
 }).execute();
 ```
 
-### 单个方法拦截器
+### functional interceptor
+
+> 基于每个方法；在当前方法执行后立即执行，主要是用于验证当前结果的
 
 ```typescript
 type TInterceptorFn = <T>(

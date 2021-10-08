@@ -124,6 +124,7 @@ export default class ChainWrapper<T = unknown> {
 
 			// interceptor -- global
 			if (
+				index &&
 				this.options.interceptor &&
 				!this.options.interceptor(previousResult, index, this.funcResults)
 			) {
@@ -188,6 +189,11 @@ export default class ChainWrapper<T = unknown> {
 		}
 
 		// return the last fn result
-		return this.funcResults[this.funcResults.length - 1];
+		const result = this.funcResults[this.funcResults.length - 1];
+		if (!result) {
+			// 如果 this.funcs.length === 0
+			return { success: true, data: undefined };
+		}
+		return result;
 	}
 }
