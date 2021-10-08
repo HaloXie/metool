@@ -24,6 +24,31 @@ const fnC = () =>
 const fnD = data => {
 	console.log(data);
 };
+const fnDCallback = (...data) => {
+	if (data && data.length) {
+		const callback = data[data.length - 1];
+		if (typeof callback === 'function') {
+			callback(null);
+		}
+	}
+};
+const fnDPromise = () =>
+	new Promise((resolve, reject) => {
+		setTimeout(() => {
+			console.log(3);
+			resolve();
+		}, 200);
+	});
+
+const fnObject = {
+	a: () => ({ data: 'fnObject.a' }),
+	b: (data, callback) => {
+		if (callback) {
+			callback(data[0] === 1 ? new Error('fb1') : null, data);
+		}
+	},
+	c: fnC,
+};
 
 describe('chain-next', () => {
 	it('empty', async () => {
@@ -42,6 +67,17 @@ describe('chain-next', () => {
 
 		// console.log(result);
 		expect(result).toEqual({ success: true, data: '1normal' });
+	});
+	it('next fnObject', async () => {
+		const result = await new ChainWrapper()
+			.next({
+				fn: fnObject.a,
+				args: [],
+			})
+			.execute();
+
+		// console.log(result);
+		expect(result).toEqual({ success: true, data: { data: 'fnObject.a' } });
 	});
 	it('next void-func', async () => {
 		const result = await new ChainWrapper()
@@ -68,6 +104,18 @@ describe('chain-next', () => {
 		// console.log(result);
 		expect(result).toEqual({ success: true, data: [0], data1: [0] });
 	});
+	it('callbackNext fnObject', async () => {
+		const a = {
+			fn: fnObject.b,
+			args: [0],
+		};
+		const wrapper = new ChainWrapper().callbackNext(a);
+
+		const result = await wrapper.execute();
+
+		// console.log(result);
+		expect(result).toEqual({ success: true, data: 0 });
+	});
 	it('callbackNext normal multi-params ', async () => {
 		const result = await new ChainWrapper()
 			.callbackNext({
@@ -92,6 +140,17 @@ describe('chain-next', () => {
 		expect(!!result.error).toEqual(true);
 		expect(result.error.message).toEqual('fb1');
 	});
+	it('callbackNext void-func', async () => {
+		const result = await new ChainWrapper()
+			.callbackNext({
+				fn: fnDCallback,
+				args: [],
+			})
+			.execute();
+
+		console.log(result);
+		expect(result).toEqual({ success: true, data: undefined });
+	});
 	it('asyncNext', async () => {
 		const result = await new ChainWrapper()
 			.asyncNext({
@@ -102,6 +161,28 @@ describe('chain-next', () => {
 
 		// console.log(result);
 		expect(result).toEqual({ success: true, data: 3 });
+	});
+	it('asyncNext fnObject', async () => {
+		const result = await new ChainWrapper()
+			.asyncNext({
+				fn: fnObject.c,
+				args: [],
+			})
+			.execute();
+
+		// console.log(result);
+		expect(result).toEqual({ success: true, data: 3 });
+	});
+	it('asyncNext void-func', async () => {
+		const result = await new ChainWrapper()
+			.asyncNext({
+				fn: fnDPromise,
+				args: [],
+			})
+			.execute();
+
+		console.log(result);
+		expect(result).toEqual({ success: true, data: undefined });
 	});
 	it('All', async () => {
 		const result = await new ChainWrapper()

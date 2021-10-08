@@ -35,40 +35,71 @@ const fnC = () =>
 		setTimeout(() => {console.log(3);resolve(3);}, 200);
 	});
 
+// void
 const fnD = data => { console.log(data);};
+const fnDCallback = (...data) => {
+	if (data && data.length) {
+		const callback = data[data.length - 1];
+		if (typeof callback === 'function') {
+			callback(null);
+		}
+	}
+};
+const fnDPromise = () =>
+	new Promise((resolve, reject) => {
+		setTimeout(() => {
+			console.log(3);
+			resolve();
+		}, 200);
+	});
 ```
 
 ### next
 
 ```JavaScript
 // empty
-new ChainWrapper().execute(); // { success: true, data: undefined }
+// { success: true, data: undefined }
+new ChainWrapper().execute();
 
-new ChainWrapper().next({fn: fnA,args: [],}).execute(); // { success: true, data: '1normal' }
+// { success: true, data: '1normal' }
+new ChainWrapper().next({fn: fnA,args: [],}).execute();
 
 // void
-new ChainWrapper().next({fn: fnD,args: [1],}).execute(); // { success: true, data: undefined }
+// { success: true, data: undefined }
+new ChainWrapper().next({fn: fnD,args: [1],}).execute();
 ```
 
 ### callbackNext
 
 ```JavaScript
+// { success: true, data: [0], data1: [0] }
 new ChainWrapper().callbackNext({
   fn: fnB,
   args: [0],
   handler: { successHandler: data => ({ success: true, data, data1: data }), },
-}).execute(); // { success: true, data: [0], data1: [0] }
+}).execute();
 
-new ChainWrapper().callbackNext({fn: fnB,args: [0, 2, 3],}).execute(); // { success: true, data: [0, 2, 3] }
+// { success: true, data: [0, 2, 3] }
+new ChainWrapper().callbackNext({fn: fnB,args: [0, 2, 3],}).execute();
 
 // callback return error
-new ChainWrapper().callbackNext({fn: fnB,args: [1],}).execute() // { success: false, error: new Error("fb1")}
+// { success: false, error: new Error("fb1")}
+new ChainWrapper().callbackNext({fn: fnB,args: [1],}).execute()
+
+// void
+// { success: true, data: undefined }
+new ChainWrapper().callbackNext({fn: fnDCallback,args: [],}).execute();
 ```
 
 ### asyncNext
 
 ```JavaScript
-new ChainWrapper().asyncNext({fn: fnC,args: [],}).execute(); // { success: true, data: 3 }
+// { success: true, data: 3 }
+new ChainWrapper().asyncNext({fn: fnC,args: [],}).execute();
+
+// void
+// { success: true, data: undefined }
+new ChainWrapper().asyncNext({fn: fnDPromise,args: [],}).execute();
 ```
 
 ## interceptor module

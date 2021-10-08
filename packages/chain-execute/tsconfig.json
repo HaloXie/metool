@@ -21,7 +21,6 @@
   ],
   "include": [
     "lib/include.d/*",
-    "lib/data/*.json",
     "lib/**/*"
   ]
 }

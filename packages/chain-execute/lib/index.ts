@@ -1,92 +1,25 @@
-// 返回结果
-type TSuccessResultObject<T> = { success: true; data?: T };
-type TErrorResultObject = { success: false; error: Error };
-type IResultObject<T> = TSuccessResultObject<T> | TErrorResultObject;
+import { EFnType } from './enum';
+import {
+	IInterceptorObject,
+	IFuncObjectNormal,
+	IFuncObjectCallback,
+	IFuncObjectAsync,
+	IOptions,
+} from './interface';
 
-// functions
-type TNormalFunction = <T>(...args: unknown[]) => T;
-type TCallbackFunction = (...args: unknown[]) => void; // 最后一个可能是 callback
-type TAsyncFunction = <T>(...args: unknown[]) => Promise<T>;
-type TErrorHandler = (error: Error) => TErrorResultObject;
-type TSuccessHandler = <T>(data: unknown) => TSuccessResultObject<T>;
-
-// 两个 interceptor 的区别，方法的会额外传入当前方法的结果
-type TInterceptorGlobalFn = <T>(
-	previousResult: T,
-	currentIndex: number,
-	resultArray: T[]
-) => boolean;
-type TInterceptorFn = <T>(
-	previousResult: T,
-	currentResult: T,
-	currentIndex: number,
-	resultArray: T[]
-) => boolean;
-type TInterceptorObject = {
-	/**
-	 * 只有当 fn 返回 true 的时候从才会被触发
-	 * 设想的工作流，可以跳转到其他方法，对应 funcs[] 的下标
-	 */
-	goto?: number;
-	/**
-	 * 如果被拦截到，是否继续下面的方法
-	 * 相当于跳过本次的错误退出，继续执行下一个方法，相当于 (goto = currentIndex + 1) + (fn = true)
-	 * 注意这里并不会修改 fn 的返回值
-	 */
-	continue?: boolean;
-	fn: TInterceptorFn;
-};
-
-//
-enum EFnType {
-	Normal, // 不是 promise 也不包含 callback
-	Callback, // 不是 promise 包含 callback
-	Async,
-}
-
-//
-interface IOptions {
-	/**
-	 * 是否进行输出，输出 当前任务和运行结果
-	 */
-	console: boolean;
-	/**
-	 * 全局拦截器，如果声明该拦截器贼会在每个方法【之前】执行，如验证用户、权限等
-	 * 所以 previousResult = resultArray[currentIndex - 1]
-	 */
-	interceptor: TInterceptorGlobalFn;
-}
-interface IFuncObject {
-	fn: TNormalFunction | TCallbackFunction | TAsyncFunction;
-	args?: unknown[];
-	type: EFnType;
-	handler?: {
-		errorHandler: TErrorHandler;
-		successHandler: TSuccessHandler;
-	};
-	/**
-	 * 用于确定是否继续下一个步骤，和 errorHandler 的区别是更偏向于业务数据
-	 * 这里是在每个方法【之后】执行，所以
-	 * 1. previousResult = resultArray[currentIndex - 1]
-	 * 2. currentResult = resultArray[currentIndex]
-	 */
-	interceptor?: TInterceptorFn | TInterceptorObject;
-}
+// const
+const _errorHandler: TErrorHandler = error => ({ success: false, error });
+const _successHandler: TSuccessHandler = data => ({ success: true, data });
+const initError = new Error('init error');
 
 // assert
-const isTInterceptorObject = (
-	param: TInterceptorFn | TInterceptorObject
-): param is TInterceptorFn => typeof param === 'function';
-
-// 默认方法
-const _errorHandler = (error: Error): TErrorResultObject => ({ success: false, error });
-const _successHandler = <T>(data: T): TSuccessResultObject<T> => ({ success: true, data });
-
-const unknownFnTypeError = new Error('unknown fn type');
+const isIInterceptorObject = (
+	param: TInterceptorFunction | IInterceptorObject
+): param is TInterceptorFunction => typeof param === 'function';
 
 //
 export default class ChainWrapper<T = unknown> {
-	private funcs: IFuncObject[];
+	private funcs: Array<IFuncObjectNormal | IFuncObjectCallback | IFuncObjectAsync>;
 	private funcResults: IResultObject<T>[];
 	private options: Partial<IOptions>;
 
@@ -96,15 +29,30 @@ export default class ChainWrapper<T = unknown> {
 		this.options = options || {};
 	}
 
-	next(param: Omit<IFuncObject, 'type'>): this {
-		this.funcs.push({ ...param, type: EFnType.Normal });
+	// todo: 考虑一下如果传入的时候 fn & fn, 或者是 fn | fn 的时候，如何处理
+	next(param: PartialBy<IFuncObjectNormal, 'type'>): this;
+	next(param: IFuncObjectNormal): this;
+	next(param: IFuncObjectCallback): this;
+	next(param: IFuncObjectAsync): this;
+	next(
+		param:
+			| PartialBy<IFuncObjectNormal, 'type'>
+			| IFuncObjectNormal
+			| IFuncObjectCallback
+			| IFuncObjectAsync
+	): this {
+		if (!param.type) {
+			this.funcs.push({ ...param, type: EFnType.Normal });
+		} else {
+			this.funcs.push(param);
+		}
 		return this;
 	}
-	callbackNext(param: Omit<IFuncObject, 'type'>): this {
+	callbackNext(param: Omit<IFuncObjectCallback, 'type'>): this {
 		this.funcs.push({ ...param, type: EFnType.Callback });
 		return this;
 	}
-	asyncNext(param: Omit<IFuncObject, 'async'>): this {
+	asyncNext(param: Omit<IFuncObjectAsync, 'type'>): this {
 		this.funcs.push({ ...param, type: EFnType.Async });
 		return this;
 	}
@@ -114,10 +62,6 @@ export default class ChainWrapper<T = unknown> {
 
 		while (index < this.funcs.length) {
 			const previousResult = this.funcResults[index - 1];
-			const task = this.funcs[index];
-			const { type, fn, args = [], handler, interceptor } = task;
-			const { errorHandler = _errorHandler, successHandler = _successHandler } = handler || {};
-
 			if (index && previousResult && !previousResult.success) {
 				break;
 			}
@@ -138,15 +82,19 @@ export default class ChainWrapper<T = unknown> {
 				};
 			}
 
+			const task = this.funcs[index];
+			const { args = [], handler, interceptor } = task;
+			const { errorHandler = _errorHandler, successHandler = _successHandler } = handler || {};
+
 			// execute fn
-			let currentResult: IResultObject<T> = { success: false, error: unknownFnTypeError };
+			let currentResult: IResultObject<T> = { success: false, error: initError };
 			try {
-				switch (type) {
+				switch (task.type) {
 					case EFnType.Normal:
-						currentResult = successHandler((fn as TNormalFunction)(...args));
+						currentResult = successHandler(task.fn(...args));
 						break;
 					case EFnType.Callback:
-						(fn as TCallbackFunction)(...args, (error: Error, data: T) => {
+						task.fn(...args, (error: Error, data: T) => {
 							if (error) {
 								currentResult = errorHandler(error);
 							} else {
@@ -155,7 +103,8 @@ export default class ChainWrapper<T = unknown> {
 						});
 						break;
 					case EFnType.Async:
-						currentResult = await (fn as TAsyncFunction)<T>(...args)
+						currentResult = await task
+							.fn<T>(...args)
 							.then(successHandler)
 							.catch(errorHandler);
 						break;
@@ -172,7 +121,7 @@ export default class ChainWrapper<T = unknown> {
 
 			// interceptor -- functional
 			if (interceptor) {
-				const interceptorFn = isTInterceptorObject(interceptor) ? interceptor : interceptor.fn;
+				const interceptorFn = isIInterceptorObject(interceptor) ? interceptor : interceptor.fn;
 				if (!interceptorFn(previousResult, currentResult, index, this.funcResults)) {
 					return {
 						success: false,
