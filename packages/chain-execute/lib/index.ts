@@ -10,7 +10,6 @@ import {
 // const
 const _errorHandler: TErrorHandler = error => ({ success: false, error });
 const _successHandler: TSuccessHandler = data => ({ success: true, data });
-const initError = new Error('init error');
 
 // assert
 const isIInterceptorObject = (
@@ -87,7 +86,7 @@ export default class ChainWrapper<T = unknown> {
 			const { errorHandler = _errorHandler, successHandler = _successHandler } = handler || {};
 
 			// execute fn
-			let currentResult: IResultObject<T> = { success: false, error: initError };
+			let currentResult: IResultObject<T> = { success: true };
 			try {
 				switch (task.type) {
 					case EFnType.Normal:
@@ -138,11 +137,7 @@ export default class ChainWrapper<T = unknown> {
 		}
 
 		// return the last fn result
-		const result = this.funcResults[this.funcResults.length - 1];
-		if (!result) {
-			// 如果 this.funcs.length === 0
-			return { success: true, data: undefined };
-		}
-		return result;
+		// At least for one result, if this.funcs is empty, return the init-value { success: true }
+		return this.funcResults[this.funcResults.length - 1];
 	}
 }
