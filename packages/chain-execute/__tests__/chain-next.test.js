@@ -55,7 +55,7 @@ describe('chain-next', () => {
 		const result = await new ChainWrapper().execute();
 
 		// console.log(result);
-		expect(result).toEqual({ success: true, data: undefined });
+		expect(result).toEqual({ success: true });
 	});
 	it('next', async () => {
 		const result = await new ChainWrapper()

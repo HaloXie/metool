@@ -15,6 +15,10 @@ export interface IInterceptorObject {
 	continue?: boolean;
 	fn: TInterceptorFunction;
 }
+// assert
+export const isIInterceptorObject = (
+	param: TInterceptorFunction | IInterceptorObject
+): param is TInterceptorFunction => typeof param === 'function';
 
 //
 export interface IOptions {

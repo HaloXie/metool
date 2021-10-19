@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "target": "es6",
+    "noImplicitAny": true,
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "declaration": true,
+    "outDir": "dist",
+    "baseUrl": "./",
+    "lib": [
+      "DOM",
+      "es2015"
+    ],
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+  },
+  "files": [
+    "lib/index.ts"
+  ],
+  "include": [
+    "lib/include.d/*",
+    "lib/**/*"
+  ]
+}

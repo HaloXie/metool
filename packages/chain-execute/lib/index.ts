@@ -1,6 +1,6 @@
 import { EFnType } from './enum';
 import {
-	IInterceptorObject,
+	isIInterceptorObject,
 	IFuncObjectNormal,
 	IFuncObjectCallback,
 	IFuncObjectAsync,
@@ -10,11 +10,6 @@ import {
 // const
 const _errorHandler: TErrorHandler = error => ({ success: false, error });
 const _successHandler: TSuccessHandler = data => ({ success: true, data });
-
-// assert
-const isIInterceptorObject = (
-	param: TInterceptorFunction | IInterceptorObject
-): param is TInterceptorFunction => typeof param === 'function';
 
 //
 export default class ChainWrapper<T = unknown> {
@@ -58,9 +53,13 @@ export default class ChainWrapper<T = unknown> {
 
 	async execute(): Promise<IResultObject<T>> {
 		let index = 0;
-
+		let currentResult: IResultObject<T> = { success: true };
+		let previousResult;
+		if (!this.funcs.length) {
+			return currentResult;
+		}
 		while (index < this.funcs.length) {
-			const previousResult = this.funcResults[index - 1];
+			previousResult = this.funcResults[index - 1];
 			if (index && previousResult && !previousResult.success) {
 				break;
 			}
@@ -86,19 +85,22 @@ export default class ChainWrapper<T = unknown> {
 			const { errorHandler = _errorHandler, successHandler = _successHandler } = handler || {};
 
 			// execute fn
-			let currentResult: IResultObject<T> = { success: true };
+
 			try {
 				switch (task.type) {
 					case EFnType.Normal:
 						currentResult = successHandler(task.fn(...args));
 						break;
 					case EFnType.Callback:
-						task.fn(...args, (error: Error, data: T) => {
-							if (error) {
-								currentResult = errorHandler(error);
-							} else {
-								currentResult = successHandler(data);
-							}
+						await new Promise<void>(resolve => {
+							task.fn(...args, (error: Error, data: T) => {
+								if (error) {
+									currentResult = errorHandler(error);
+								} else {
+									currentResult = successHandler(data);
+								}
+								resolve();
+							});
 						});
 						break;
 					case EFnType.Async:
