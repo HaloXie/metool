@@ -1,0 +1,16 @@
+mysql-server:
+  hostname: mysql-server
+  container_name: mysql-server
+  image: mysql:latest
+  cap_add:
+    - SYS_NICE # CAP_SYS_NICE
+  command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --sql_mode="no_engine_substitution"
+  environment:
+    - MYSQL_ROOT_PASSWORD=root
+    - MYSQL_DATABASE=sequelize_demo
+  ports:
+    - '3306:3306'
+  volumes:
+    - /Users/haloxie/Documents/my-data:/data/backup # 用于 source 初始化资源
+    - /Users/haloxie/Documents/my-data/mySql:/var/lib/mysql
+  tty: true # 注意是当前 server 层级

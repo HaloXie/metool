@@ -1,0 +1,26 @@
+version: '3'
+services:
+  jenkins-server:
+    container_name: jenkins-server
+    image: jenkins/jenkins
+    tty: true
+    environment:
+      # JENKINS_PASSWORD: admin # 没有起作用
+      # JENKINS_USERNAME: admin
+      # JENKINS_EMAIL: user@example.com
+      JENKINS_HOME: /var/jenkins_home
+    ports:
+      - '8080:8080'
+    volumes:
+      - /Users/haloxie/Documents/my-data/jenkins_home:/var/jenkins_home
+    deploy:
+      # mode + replicas 用于启动 docker 副本，这个是 v3，v2 是 docker-compose scale app=6
+      # mode: replicated
+      # replicas: 6
+      resources:
+        limits:
+          cpus: '1'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G

@@ -1,0 +1,7 @@
+#!/bin/bash
+# add host
+mc config host add {{ getenv "mcAlias" }} {{ getenv "mcHost" }} {{ getenv "mcUser" }} {{ getenv "mcPwd" }}
+# git, notice blow configuration only apply for clone in http mode
+git config --global credential.helper store
+touch  /.git-credentials
+echo 'http://{{ getenv "gitUser" }}:{{ getenv "gitPwd" }}@{{ getenv "gitHost" }}' >> /.git-credentials

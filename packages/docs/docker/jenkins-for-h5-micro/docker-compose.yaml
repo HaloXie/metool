@@ -1,0 +1,26 @@
+version: '3'
+services:
+  h5-jenkins-20211108:
+    container_name: h5-jenkins-20211108
+    image: h5-jenkins:20211108
+		tty: true
+    environment:
+      mcAlias: 'ycMinIO'
+      mcHost: 'http://abc.com'
+      mcUser: 'abc'
+      mcPwd: 'pwd'
+      gitUser: 'haloxie'
+      gitPwd: 'abc'
+      gitHost: 'github.com'
+    ports:
+      - '8070:8080'
+    volumes:
+      - /Users/haloxie/Documents/my-data/h5-jenkins-20211108-home:/var/jenkins_home
+    deploy:    
+      resources:
+        limits:
+          cpus: '1'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G

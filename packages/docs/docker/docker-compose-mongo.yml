@@ -1,0 +1,39 @@
+version: '3'
+
+services:
+  mongo: # service name
+    image: mongo
+    container_name: mongo
+    hostname: mongo
+    restart: always
+    networks:
+      - db
+    ports:
+      - '27017:27017'
+    environment:
+      TZ: Asia/Shanghai
+
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - /Users/haloxie/Documents/my-data/mongodb:/data/db
+    command: mongod
+
+  mongo-express: # service name
+    image: mongo-express
+    container_name: mongo-express
+    restart: always
+    links:
+      - mongo:mongo
+    depends_on:
+      - mongo
+    networks:
+      - db
+    ports:
+      - '27018:8081'
+    environment:
+      ME_CONFIG_OPTIONS_EDITORTHEME: 3024-night
+      ME_CONFIG_MONGODB_SERVER: mongo
+
+networks:
+  db:
+    driver: bridge
