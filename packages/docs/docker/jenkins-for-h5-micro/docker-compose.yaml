@@ -12,6 +12,7 @@ services:
       gitUser: 'haloxie'
       gitPwd: 'abc'
       gitHost: 'github.com'
+      npmRegistry: 'https://registry.npmjs.org/'
     ports:
       - '8070:8080'
     volumes:

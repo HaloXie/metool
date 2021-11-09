@@ -16,6 +16,7 @@ RUN jenkins-plugin-cli --plugins ace-editor ant antisamy-markup-formatter apache
 		workflow-scm-step workflow-step-api workflow-support ws-cleanup \
     # install plugins via cli
     configuration-as-code groovy-postbuild
+# RUN jenkins-plugin-cli --plugins authorize-project:latest
 
 # use user:root to install some necessary tools via apt
 USER root 
@@ -37,7 +38,21 @@ COPY ./scripts /
 # drop back to the regular jenkins user to config workspace
 # USER jenkins
 
+# add host
+ADD ./hosts /etc/hosts
+# add jenkins init, copy will not ccopy the folder content
+ADD ./jenkins.init /var/jenkins_home/jenkins.init
+
 # ENV JENKINS_HOME /var/jenkins_home
+# prevent plugins installtions
+ENV JAVA_OPTS='-Djenkins.install.runSetupWizard=false'
+
+# CASC_JENKINS_CONFIG configuration-as-code configuration
+# or set user & password via groovy
+# ENV CASC_JENKINS_CONFIG='/var/jenkins_home/casc.yaml'
+# ENV JENKINS_ADMIN_ID='admin'
+# ENV JENKINS_ADMIN_PASSWORD='admin'
+
 ENV mcAlias=''
 ENV mcHost=''
 ENV mcUser=''
@@ -47,11 +62,12 @@ ENV gitUser=''
 ENV gitPwd=''
 ENV gitHost=''
 
-# add host
-ADD ./hosts /etc/hosts
+ENV npmRegistry='https://registry.npmjs.org/'
 
 # default jenkins port
 EXPOSE 8080
+VOLUME /var/jenkins_home
+
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
 # CMD [ "/init.sh" ]
 # CMD [ "/usr/bin/stationary" ]
