@@ -1,58 +1,47 @@
 # Jenkins: https://github.com/jenkinsci/docker/blob/master/README.md
 FROM jenkins/jenkins
 
-# install recommended plugins
-#   https://stackoverflow.com/questions/68662364/jenkins-install-recommended-plugins-via-ansible-or-cli
-RUN jenkins-plugin-cli --plugins ace-editor ant antisamy-markup-formatter apache-httpcomponents-client-4-api bootstrap4-api \ 
-		bootstrap5-api bouncycastle-api branch-api build-timeout caffeine-api checks-api cloudbees-folder command-launcher \ 
-		credentials credentials-binding display-url-api durable-task echarts-api email-ext font-awesome-api git git-client \ 
-		git-server github github-api github-branch-source gradle handlebars jackson2-api jaxb jdk-tool jjwt-api jquery3-api \ 
-		jsch junit ldap lockable-resources mailer matrix-auth matrix-project momentjs okhttp-api pam-auth pipeline-build-step \ 
-		pipeline-github-lib pipeline-graph-analysis pipeline-input-step pipeline-milestone-step pipeline-model-api \ 
-		pipeline-model-definition pipeline-model-extensions pipeline-rest-api pipeline-stage-step pipeline-stage-tags-metadata \ 
-		pipeline-stage-view plain-credentials plugin-util-api popper-api popper2-api resource-disposer scm-api script-security \ 
-		snakeyaml-api ssh-credentials ssh-slaves sshd structs timestamper token-macro trilead-api workflow-aggregator workflow-api \ 
-		workflow-basic-steps workflow-cps workflow-cps-global-lib workflow-durable-task-step workflow-job workflow-multibranch \ 
-		workflow-scm-step workflow-step-api workflow-support ws-cleanup \
-    # install plugins via cli
-    configuration-as-code groovy-postbuild
-# RUN jenkins-plugin-cli --plugins authorize-project:latest
-
-# use user:root to install some necessary tools via apt
+# ================================================================= confd
+# USER jenkins
+# confd configuration
 USER root 
-# https://www.cnblogs.com/yuanyiming/p/12073509.html
-RUN apt-get update 
-RUN apt-get install nodejs npm git-all vim zip wget -y
-
-# looks like apt not includes the mc, all supports softwares in https://packages.ubuntu.com/
-RUN cd /usr/share \ 
-    && wget https://dl.min.io/client/mc/release/linux-amd64/mc \
-    && chmod +x mc \
-    && ln -s /usr/share/mc /usr/bin/mc \
-    && ln -s /usr/share/mc /usr/local/bin/mc
-
 COPY ./paramcenter_tools /usr/bin
 COPY ./render /etc/confd
 COPY ./scripts /
 
-# drop back to the regular jenkins user to config workspace
-# USER jenkins
-
-# add host
-ADD ./hosts /etc/hosts
-# add jenkins init, copy will not ccopy the folder content
-ADD ./jenkins.init /var/jenkins_home/jenkins.init
-
-# ENV JENKINS_HOME /var/jenkins_home
+# ================================================================= Jenkins configuartion | install
+ENV JENKINS_HOME='/var/jenkins_home'
 # prevent plugins installtions
 ENV JAVA_OPTS='-Djenkins.install.runSetupWizard=false'
-
 # CASC_JENKINS_CONFIG configuration-as-code configuration
 # or set user & password via groovy
-# ENV CASC_JENKINS_CONFIG='/var/jenkins_home/casc.yaml'
+# ENV CASC_JENKINS_CONFIG='$JENKINS_HOME/casc.yaml'
 # ENV JENKINS_ADMIN_ID='admin'
 # ENV JENKINS_ADMIN_PASSWORD='admin'
+# COPY ./jenkins.init/casc.yaml $JENKINS_HOME/casc.yaml
 
+RUN rm -rf $JENKINS_HOME/users $JENKINS_HOME/config.xml
+# ADD could copy and folder and unzip file
+ADD ./jenkins.init/users $JENKINS_HOME/users
+# COPY only for file and could not unzip file
+COPY ./jenkins.init/config.xml $JENKINS_HOME/
+COPY ./jenkins.init/*plugins.txt $JENKINS_HOME/
+
+# https://stackoverflow.com/questions/68662364/jenkins-install-recommended-plugins-via-ansible-or-cli
+RUN /usr/local/bin/install-plugins.sh < $JENKINS_HOME/recommended-plugins.txt \
+  && /usr/local/bin/install-plugins.sh < $JENKINS_HOME/custom-plugins.txt
+
+# ================================================================= apt update
+RUN apt autoremove && dpkg --configure -a && apt-get update \
+  && apt-get install -f git nodejs npm vim zip wget -y \
+  # looks like apt not includes the mc, all supports softwares in https://packages.ubuntu.com/
+  && cd /usr/share \ 
+  && wget https://dl.min.io/client/mc/release/linux-amd64/mc \
+  && chmod +x mc \
+  && ln -s /usr/share/mc /usr/bin/mc \
+  && ln -s /usr/share/mc /usr/local/bin/mc
+
+# ================================================================= Env variables
 ENV mcAlias=''
 ENV mcHost=''
 ENV mcUser=''
@@ -64,9 +53,9 @@ ENV gitHost=''
 
 ENV npmRegistry='https://registry.npmjs.org/'
 
-# default jenkins port
+# ================================================================= docker script
 EXPOSE 8080
-VOLUME /var/jenkins_home
+VOLUME $JENKINS_HOME
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
 # CMD [ "/init.sh" ]

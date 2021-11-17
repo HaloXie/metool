@@ -1,16 +1,15 @@
 #!/bin/bash
 # add host
-mc config host add {{ getenv "mcAlias" }} {{ getenv "mcHost" }} {{ getenv "mcUser" }} {{ getenv "mcPwd" }}
+# mc config host add {{ getenv "mcAlias" }} {{ getenv "mcHost" }} {{ getenv "mcUser" }} {{ getenv "mcPwd" }}
+
 # git, notice blow configuration only apply for clone in http mode
 git config --global credential.helper store
 touch  /.git-credentials
 echo 'http://{{ getenv "gitUser" }}:{{ getenv "gitPwd" }}@{{ getenv "gitHost" }}' >> /.git-credentials
+
 # set npm regestry
 npm config set registry {{ getenv "npmRegistry" }}
+
 # replace jenkins users
 echo 'instance.token = 1193e62bcc5ff90161468792376700d79f'
 echo 'user/pwd = admin/admin'
-rm -rf /var/jenkins_home/users /var/jenkins_home/config.xml
-cp -r /var/jenkins_home/jenkins.init/users /var/jenkins_home/users
-cp /var/jenkins_home/jenkins.init/config.xml /var/jenkins_home/config.xml
-cp -r /var/jenkins_home/jenkins.init/casc.yaml /var/jenkins_home/casc.yaml

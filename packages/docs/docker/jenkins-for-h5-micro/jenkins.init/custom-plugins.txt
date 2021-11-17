@@ -1,0 +1,3 @@
+configuration-as-code
+groovy-postbuild
+authorize-project:latest
