@@ -136,9 +136,9 @@ const gitHelper = {
       await execute(command, projectPath);
     } catch (error) {
       // 执行 merge abort
-      await execute('git merge --abort', projectPath);
+      // await execute('git merge --abort', projectPath);
 
-      throw error;
+      throwError(error.message);
     }
   },
   push(projectPath) {
@@ -179,7 +179,7 @@ const projectHelper = {
       if (err) throw err;
       const newData = data
         .replace(
-          '<meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">',
+          '<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">',
           '',
         )
         .replace(
@@ -192,11 +192,11 @@ const projectHelper = {
       fs.writeFileSync(filePath, newData);
     });
   },
-  zip() {
+  async zip() {
     const destPath = CONFIG.projects.zipPath;
     const fileName = Date.now().toString();
     const command = `zip -rq ${fileName}.zip ${destPath}`;
-    execute(command, basePath);
+    await execute(command, basePath);
   },
 };
 
@@ -276,7 +276,7 @@ const main = async () => {
     await task.pushLocal();
     await task.checkout();
     await task.build();
-    if (env !== 'production') {
+    if (!env || env === 'test') {
       await task.push();
     }
     await task.backGitBranch();
@@ -292,7 +292,8 @@ const main = async () => {
   if (env !== 'production') {
     projectHelper.removeIndexCors();
   }
-  projectHelper.zip();
+  await projectHelper.zip();
   console.log('============= completed =================');
+  // process.exit(0);
 };
 main();
