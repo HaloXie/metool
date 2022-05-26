@@ -1,0 +1,16 @@
+{
+  "author": "",
+  "dependencies": {
+    "simple-git": "^3.4.0"
+  },
+  "description": "这个项目主要是能快速进行 git 仓库的下载和更新",
+  "keywords": [],
+  "license": "ISC",
+  "main": "index.js",
+  "name": "git-helper",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "version": "1.0.0"
+}

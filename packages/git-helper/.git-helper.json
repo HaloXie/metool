@@ -1,0 +1,19 @@
+{
+  "autoInstall": {
+    "client": "npm",
+    "enabled": true
+  },
+  "commonBranches": [],
+  "gitCertificate": {
+    "certificate": "",
+    "key": ""
+  },
+  "repositories": [
+    {
+      "branches": [""],
+      "name": "",
+      "url": "http://"
+    }
+  ],
+  "workspace": ""
+}
