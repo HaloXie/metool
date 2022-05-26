@@ -147,6 +147,11 @@ const gitHelper = {
   },
 };
 const projectHelper = {
+  async nodeVersionCheck() {
+    const command = `node -v`;
+    const result = await execute(command);
+    return result > 'v14.0.0';
+  },
   emptyZipPath() {
     const command = `rm -rf ${CONFIG.projects.zipPath}`;
     return execute(command);
@@ -268,6 +273,11 @@ const sleep = (name, ms = 1000) =>
 
 // 执行
 const main = async () => {
+  const nodeCheck = await projectHelper.nodeVersionCheck();
+  if (!nodeCheck) {
+    console.log(`请使用 14 以上的 node 版本`);
+    process.exit(1);
+  }
   //
   projectHelper.emptyZipPath();
 
@@ -294,6 +304,8 @@ const main = async () => {
   }
   await projectHelper.zip();
   console.log('============= completed =================');
-  // process.exit(0);
+  process(0);
 };
 main();
+
+// todo 已经编译的不需要在编译
