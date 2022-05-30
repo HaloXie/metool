@@ -60,7 +60,7 @@ const rootFolders = fs
       ),
   )
   .map((item) => item.name);
-const buildPath = CONFIG.build.localMode ? CONFIG.build.localPath : CONFIG.build.originPath;
+let buildPath = '';
 const baseBranches = Object.keys(CONFIG.envs).map((item) => CONFIG.envs[item].branch);
 const isProduction = env === 'production';
 
@@ -251,6 +251,8 @@ const projectHelper = {
     // 如果存在则先删除
     if (fs.existsSync(target)) {
       await this.emptyFolder('', target);
+    } else {
+      fs.mkdirSync(target);
     }
 
     const command = `cp -r ${srcPath}/* ${target}`;
@@ -363,11 +365,17 @@ const main = async () => {
   }
 
   // check params
-  const supportedEnv = Object.keys(CONFIG.envs);
-  if (env && !supportedEnv.includes(env)) {
-    throwError(`错误的环境类型, 只支持 ${supportedEnv.join(',')}, 默认不写为 test 环境`);
+  try {
+    const supportedEnv = Object.keys(CONFIG.envs);
+    if (env && !supportedEnv.includes(env)) {
+      throwError(`错误的环境类型, 只支持 ${supportedEnv.join(',')}, 默认不写为 test 环境`);
+    }
+    CONFIG.build.localMode = JSON.parse(localMode);
+    buildPath = CONFIG.build.localMode ? CONFIG.build.localPath : CONFIG.build.originPath;
+  } catch (error) {
+    console.log(error);
+    throwError('错误的环境类型');
   }
-  CONFIG.build.localMode = !!localMode;
 
   // init build folder
   await projectHelper.initBuildFolder();
