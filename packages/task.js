@@ -6,11 +6,20 @@ const readline = require('readline');
 
 //
 const CONFIG = {
+  build: {
+    /**
+     * true 是本地打包, false(default) 是提交到 originPath 仓库
+     * true 的时候才会触发 zip 压缩
+     */
+    localMode: false,
+    localPath: '_build',
+    originPath: 'fe-marketing-build',
+    originRepoPath: 'https://coding.jd.com/freeFe/fe-marketing-build/', // build 远程仓库地址
+  },
   projects: {
-    exclude: ['_build'], // 支持 string[] 和 正则、方法
+    excludes: [], // 支持 string[], 后续支持正则、方法
     output: 'dist', // build 结果文件夹, 作用于每个项目
-    zipPath: '_build', // 当前文件夹，即当前 js 所在的文件夹
-    // 用于保存到 zipPath 的名字，这个和 nginx 的配置有关
+    // 用于保存到 build 路径的名字，这个和 nginx 的配置有关
     nameMap: [
       { project: 'fe-marketing-auth-pc', name: 'auth' },
       { project: 'fe-marketing-common-pc', name: 'market-common' },
@@ -38,12 +47,39 @@ const CONFIG = {
   },
 };
 
-// task controller
+// 常量和公共方法
+const [env, localMode] = process.argv.splice(2); // 第一个参数用于设置环境, 第二个参数构建类型（boolean）
+const basePath = process.cwd(); // 当前目录
+const rootFolders = fs
+  .readdirSync(basePath, { withFileTypes: true })
+  .filter(
+    (item) =>
+      item.isDirectory() &&
+      ![...CONFIG.projects.excludes, CONFIG.build.localPath, CONFIG.build.originPath].includes(
+        item.name,
+      ),
+  )
+  .map((item) => item.name);
+const buildPath = CONFIG.build.localMode ? CONFIG.build.localPath : CONFIG.build.originPath;
+const baseBranches = Object.keys(CONFIG.envs).map((item) => CONFIG.envs[item].branch);
+const isProduction = env === 'production';
+
 const exec = promisify(child_process.exec);
 const readlineInstance = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
+const dateWithFormat = () => {
+  const date = new Date(new Date().getTime());
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const day = date.getDate();
+  const hours = date.getHours();
+  const mins = date.getMinutes();
+
+  const toLength2 = (num) => num.toString().padStart(2, '0');
+  return `${year}${toLength2(month)}${toLength2(day)}-${toLength2(hours)}${toLength2(mins)}`;
+};
 
 const executeHelper = async (command, workDir) => {
   if (!command || !workDir) {
@@ -80,32 +116,49 @@ const throwError = (errMsg) => {
 };
 
 const gitHelper = {
+  async checkGitCommand(projectPath) {
+    const command = 'git --version';
+    try {
+      await execute(command, projectPath);
+      return fs.existsSync(path.join(projectPath, '.git'));
+    } catch {
+      return false; // 说明电脑没有安装 git
+    }
+  },
+  clone(repoUrl, folderName, branch, projectPath) {
+    const command = `git clone -b ${branch} ${repoUrl} ${folderName}`;
+    return execute(command, projectPath);
+  },
   checkStatus(projectPath) {
     const command = 'git status --porcelain';
     return execute(command, projectPath);
   },
-  async pushLocal(projectPath) {
+  async pushLocal(projectPath, autoCommit = false) {
     const checkResult = await gitHelper.checkStatus(projectPath);
     if (!checkResult) {
       // 如果没有记录，则表示不需要进行推送
       return;
     }
 
-    await new Promise((resolve, reject) => {
-      readlineInstance.question(
-        '检测到本地存在未提交记录，将会自动提交，commit msg 为: ',
-        async (commitMsg) => {
-          if (!commitMsg) {
-            throwError('empty commit message');
-          }
-
-          const command = `git add . && git commit -m '${commitMsg}' && git push`;
-          await execute(command, projectPath);
-          resolve();
-        },
-      );
-    });
-    readlineInstance.close(); // 需要手动结束
+    let commitMsg = '';
+    if (autoCommit) {
+      commitMsg = dateWithFormat();
+    } else {
+      commitMsg = await new Promise((resolve, reject) => {
+        readlineInstance.question(
+          '检测到本地存在未提交记录，将会自动提交，commit msg 为: ',
+          (answer) => {
+            if (!answer) {
+              throwError('empty commit message');
+            }
+            resolve(answer);
+          },
+        );
+      });
+      readlineInstance.close(); // 需要手动结束
+    }
+    const command = `git add . && git commit -m '${commitMsg}' && git push`;
+    return execute(command, projectPath);
   },
   getCurrBranch(projectPath) {
     const command = 'git symbolic-ref --short -q HEAD';
@@ -152,31 +205,60 @@ const projectHelper = {
     const result = await execute(command);
     return result > 'v14.0.0';
   },
-  emptyZipPath() {
-    const command = `rm -rf ${CONFIG.projects.zipPath}`;
-    return execute(command);
+  async initBuildFolder() {
+    const buildFolder = path.join(basePath, buildPath);
+    if (!fs.existsSync(buildFolder)) {
+      fs.mkdirSync(buildFolder, { recursive: true });
+    }
+
+    if (CONFIG.build.localMode) {
+      this.emptyFolder('', buildFolder);
+      return;
+    }
+
+    // 需要提交到 repo 的
+    const hasCloned = await gitHelper.checkGitCommand(buildFolder);
+    const targetBranch = CONFIG.envs[env || 'test'].branch;
+    if (hasCloned) {
+      await gitHelper.checkout(targetBranch, buildFolder);
+      await gitHelper.pull(targetBranch, buildFolder);
+    } else {
+      // clone 之前需要保证内部无其他的文件
+      await gitHelper.clone(CONFIG.build.originRepoPath, buildPath, targetBranch, basePath);
+    }
+  },
+  emptyFolder(_exclude, projectPath) {
+    // 注意 ｜ 前后不能添加空格， rm -rf !(.git|a|README.md) , a 是文件夹
+    const excludeItems = []; // 不清除的文件或者是文件夹
+    if (Array.isArray(_exclude)) {
+      excludeItems.push(..._exclude);
+    } else if (typeof _exclude === 'string' && _exclude) {
+      excludeItems.push(_exclude);
+    }
+
+    const target = excludeItems.length ? `!(${excludeItems.join('|')})` : './*';
+    const command = `rm -rf ${target} `;
+    return execute(command, projectPath);
   },
   build(projectPath) {
     const command = 'npm run build';
     return execute(command, projectPath);
   },
-  copyDist(projectPath, projectName) {
+  async copyDist(projectPath, projectName) {
     const srcPath = CONFIG.projects.output;
-    const destPath = CONFIG.projects.zipPath;
     const mapName = CONFIG.projects.nameMap.find((item) => item.project === projectName).name;
-
-    if (!fs.existsSync(destPath)) {
-      fs.mkdirSync(destPath, { recursive: true });
+    const target = path.join(basePath, `${buildPath}/${mapName}`);
+    // 如果存在则先删除
+    if (fs.existsSync(target)) {
+      await this.emptyFolder('', target);
     }
-    const command = `cp -r ${srcPath} ../${destPath}/${mapName}`;
+
+    const command = `cp -r ${srcPath}/* ${target}`;
     execute(command, projectPath);
   },
   // 目前只需要修改 portal 的
   removeIndexCors() {
-    // 读取 _build 文件夹下的 portal 的 index
-
-    // 这个是固定写死就行
-    const filePath = path.join(CONFIG.projects.zipPath, 'portal', 'index.html');
+    const filePath = path.join(buildPath, 'portal', 'index.html');
     if (!fs.existsSync(filePath)) {
       throw new Error('removeIndexCors, could not find index.html');
     }
@@ -198,20 +280,12 @@ const projectHelper = {
     });
   },
   async zip() {
-    const destPath = path.join(basePath, CONFIG.projects.zipPath);
+    const workDir = path.join(basePath, buildPath);
     const fileName = Date.now().toString();
     const command = `zip -rq ../${fileName}.zip ./*`;
-    await execute(command, destPath);
+    await execute(command, workDir);
   },
 };
-
-// 常量和公共方法
-const [env] = process.argv.splice(2); // 第一个参数用于设置环境
-const basePath = process.cwd(); // 当前目录
-const rootFolders = fs
-  .readdirSync(basePath, { withFileTypes: true })
-  .filter((item) => item.isDirectory() && !CONFIG.projects.exclude.includes(item.name))
-  .map((item) => item.name);
 
 class TaskController {
   projectName = ''; // 项目名称
@@ -229,7 +303,9 @@ class TaskController {
     }
   }
   async pushLocal() {
-    await gitHelper.pushLocal(this.fullProjectPath);
+    if (!baseBranches.includes(this.currBranch)) {
+      await gitHelper.pushLocal(this.fullProjectPath);
+    }
   }
   // 切换环境对应分支, 并进行合并
   async checkout() {
@@ -248,11 +324,18 @@ class TaskController {
       await gitHelper.checkout(this.targetBranch, this.fullProjectPath);
       await gitHelper.pull(this.targetBranch, this.fullProjectPath);
 
-      const branch = env === 'production' ? CONFIG.envs.pre.branch : this.currBranch;
-      await gitHelper.merge(branch, this.fullProjectPath);
+      if (baseBranches.includes(this.currBranch)) {
+        // 如果是基础版本，即非开发版本，除了 pre => master 其他不能相互合并
+        if (isProduction) {
+          await gitHelper.merge(CONFIG.envs.pre.branch, this.fullProjectPath);
+        }
+      } else {
+        // 开发版本
+        await gitHelper.merge(this.currBranch, this.fullProjectPath);
+      }
     }
   }
-  // 执行 build，并将 dist 文件夹拷贝到 zipPath 文件夹
+  // 执行 build，并将 dist 文件夹拷贝到 buildPath 文件夹
   async build() {
     await projectHelper.build(this.fullProjectPath);
     await projectHelper.copyDist(this.fullProjectPath, this.projectName);
@@ -278,8 +361,16 @@ const main = async () => {
     console.log(`请使用 14 以上的 node 版本`);
     process.exit(1);
   }
-  //
-  projectHelper.emptyZipPath();
+
+  // check params
+  const supportedEnv = Object.keys(CONFIG.envs);
+  if (env && !supportedEnv.includes(env)) {
+    throwError(`错误的环境类型, 只支持 ${supportedEnv.join(',')}, 默认不写为 test 环境`);
+  }
+  CONFIG.build.localMode = !!localMode;
+
+  // init build folder
+  await projectHelper.initBuildFolder();
 
   const taskProcess = async (currProject) => {
     const task = new TaskController(currProject);
@@ -299,10 +390,14 @@ const main = async () => {
     await taskProcess(item);
   }
 
-  if (env !== 'production') {
+  if (!isProduction) {
     projectHelper.removeIndexCors();
   }
-  await projectHelper.zip();
+  if (CONFIG.build.localMode) {
+    await projectHelper.zip();
+  } else {
+    await gitHelper.pushLocal(path.join(basePath, buildPath), true);
+  }
   console.log('============= completed =================');
   process.exit(0);
 };
