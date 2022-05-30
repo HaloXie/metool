@@ -99,7 +99,7 @@ const gitHelper = {
             throwError('empty commit message');
           }
 
-          const command = `git add . && git commit -m ${commitMsg} && git push`;
+          const command = `git add . && git commit -m '${commitMsg}' && git push`;
           await execute(command, projectPath);
           resolve();
         },
@@ -198,10 +198,10 @@ const projectHelper = {
     });
   },
   async zip() {
-    const destPath = CONFIG.projects.zipPath;
+    const destPath = path.join(basePath, CONFIG.projects.zipPath);
     const fileName = Date.now().toString();
-    const command = `zip -rq ${fileName}.zip ${destPath}`;
-    await execute(command, basePath);
+    const command = `zip -rq ../${fileName}.zip ./*`;
+    await execute(command, destPath);
   },
 };
 
@@ -304,7 +304,7 @@ const main = async () => {
   }
   await projectHelper.zip();
   console.log('============= completed =================');
-  process(0);
+  process.exit(0);
 };
 main();
 
