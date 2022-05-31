@@ -284,7 +284,9 @@ const projectHelper = {
   async zip() {
     const workDir = path.join(basePath, buildPath);
     const fileName = Date.now().toString();
-    const command = `zip -rq ../${fileName}.zip ./*`;
+    // 如果指定的文件夹内为空，会导致解压时候有提示
+    // -x 后的内容没有找到也会有提示
+    const command = `zip -rq ../${fileName}.zip ./ ${CONFIG.build.localMode ? '' : '-x *.git*'} `;
     await execute(command, workDir);
   },
 };
@@ -326,8 +328,8 @@ class TaskController {
       await gitHelper.checkout(this.targetBranch, this.fullProjectPath);
       await gitHelper.pull(this.targetBranch, this.fullProjectPath);
       if (isProduction) {
-        // production: pre => master
-        await gitHelper.merge(CONFIG.envs.pre.branch, this.fullProjectPath);
+        // production 不做任何 merge
+        // await gitHelper.merge(CONFIG.envs.pre.branch, this.fullProjectPath);
       } else {
         if (!baseBranches.includes(this.currBranch)) {
           // 开发版本
@@ -345,7 +347,9 @@ class TaskController {
     await gitHelper.push(this.fullProjectPath);
   }
   backGitBranch() {
-    return gitHelper.checkout(this.currBranch, this.fullProjectPath);
+    if (this.currBranch !== this.targetBranch) {
+      return gitHelper.checkout(this.currBranch, this.fullProjectPath);
+    }
   }
 }
 
@@ -369,7 +373,7 @@ const main = async () => {
     if (env && !supportedEnv.includes(env)) {
       throwError(`错误的环境类型, 只支持 ${supportedEnv.join(',')}, 默认不写为 test 环境`);
     }
-    CONFIG.build.localMode = JSON.parse(localMode);
+    CONFIG.build.localMode = JSON.parse(localMode || false);
     buildPath = CONFIG.build.localMode ? CONFIG.build.localPath : CONFIG.build.originPath;
   } catch (error) {
     console.log(error);
@@ -400,11 +404,11 @@ const main = async () => {
   if (!isProduction) {
     projectHelper.removeIndexCors();
   }
-  if (CONFIG.build.localMode) {
-    await projectHelper.zip();
-  } else {
+  if (!CONFIG.build.localMode) {
     await gitHelper.pushLocal(path.join(basePath, buildPath), true);
   }
+  await projectHelper.zip();
+
   console.log('============= completed =================');
   process.exit(0);
 };
