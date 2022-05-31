@@ -384,7 +384,7 @@ const main = async () => {
     await task.pushLocal();
     await task.checkout();
     await task.build();
-    if (!env || env === 'test') {
+    if (!isProduction) {
       await task.push();
     }
     await task.backGitBranch();
