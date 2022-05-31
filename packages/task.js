@@ -157,7 +157,7 @@ const gitHelper = {
       });
       readlineInstance.close(); // 需要手动结束
     }
-    const command = `git add . && git commit -m '${commitMsg}' && git push`;
+    const command = `git add . && git commit -m '${commitMsg} via task.js' && git push`;
     return execute(command, projectPath);
   },
   getCurrBranch(projectPath) {
@@ -329,6 +329,7 @@ class TaskController {
       if (baseBranches.includes(this.currBranch)) {
         // 如果是基础版本，即非开发版本，除了 pre => master 其他不能相互合并
         if (isProduction) {
+          // note: production 不做任何 merge 应该是提交 MR
           await gitHelper.merge(CONFIG.envs.pre.branch, this.fullProjectPath);
         }
       } else {
