@@ -325,16 +325,14 @@ class TaskController {
     if (this.currBranch !== this.targetBranch) {
       await gitHelper.checkout(this.targetBranch, this.fullProjectPath);
       await gitHelper.pull(this.targetBranch, this.fullProjectPath);
-
-      if (baseBranches.includes(this.currBranch)) {
-        // 如果是基础版本，即非开发版本，除了 pre => master 其他不能相互合并
-        if (isProduction) {
-          // note: production 不做任何 merge 应该是提交 MR
-          await gitHelper.merge(CONFIG.envs.pre.branch, this.fullProjectPath);
-        }
+      if (isProduction) {
+        // production: pre => master
+        await gitHelper.merge(CONFIG.envs.pre.branch, this.fullProjectPath);
       } else {
-        // 开发版本
-        await gitHelper.merge(this.currBranch, this.fullProjectPath);
+        if (!baseBranches.includes(this.currBranch)) {
+          // 开发版本
+          await gitHelper.merge(this.currBranch, this.fullProjectPath);
+        }
       }
     }
   }
