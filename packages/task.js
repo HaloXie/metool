@@ -17,15 +17,13 @@ const CONFIG = {
     originRepoPath: 'https://coding.jd.com/freeFe/fe-marketing-build/', // build 远程仓库地址
   },
   projects: {
-    excludes: [], // 支持 string[], 后续支持正则、方法
+    excludes: ['fe-marketing-auth-pc', 'fe-marketing-sub-pc', 'fe-marketing-crowd-pc'], // 支持 string[], 后续支持正则、方法
     output: 'dist', // build 结果文件夹, 作用于每个项目
     // 用于保存到 build 路径的名字，这个和 nginx 的配置有关
     nameMap: [
-      { project: 'fe-marketing-auth-pc', name: 'auth' },
       { project: 'fe-marketing-common-pc', name: 'market-common' },
-      { project: 'fe-marketing-crowd-pc', name: 'crowd' },
       { project: 'fe-marketing-portal-pc', name: 'portal' },
-      { project: 'fe-marketing-sub-pc', name: 'marketing' },
+      { project: 'fe-marketing-customer-pc', name: 'marketing' },
       { project: 'fe-marketing-workbench-pc', name: 'workbench' },
     ],
   },
@@ -48,7 +46,8 @@ const CONFIG = {
 };
 
 // 常量和公共方法
-const [env, localMode] = process.argv.splice(2); // 第一个参数用于设置环境, 第二个参数构建类型（boolean）
+const allArgs = process.argv.splice(2); // 第一个参数用于设置环境, 第二个参数构建类型（boolean）
+const [env, localMode] = allArgs.filter((item) => !item.startsWith('--'));
 const basePath = process.cwd(); // 当前目录
 const rootFolders = fs
   .readdirSync(basePath, { withFileTypes: true })
@@ -64,6 +63,11 @@ let buildPath = '';
 const baseBranches = Object.keys(CONFIG.envs).map((item) => CONFIG.envs[item].branch);
 const isProduction = env === 'production';
 
+// todo
+const isSkipCommit = allArgs.includes('--skip-commit');
+const isAutoOpenZippedDir = allArgs.includes('--open');
+
+//
 const exec = promisify(child_process.exec);
 const readlineInstance = readline.createInterface({
   input: process.stdin,
@@ -258,23 +262,17 @@ const projectHelper = {
     const command = `cp -r ${srcPath}/* ${target}`;
     execute(command, projectPath);
   },
-  // 目前只需要修改 portal 的
-  removeIndexCors() {
+  portalIndexAddCors() {
     const filePath = path.join(buildPath, 'portal', 'index.html');
     if (!fs.existsSync(filePath)) {
       throw new Error('removeIndexCors, could not find index.html');
     }
     fs.readFile(filePath, 'utf8', (err, data) => {
       if (err) throw err;
-      const newData = data
-        .replace(
-          '<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">',
-          '',
-        )
-        .replace(
-          '<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />',
-          '',
-        );
+      const newData = data.replace(
+        '<meta charset="utf-8">',
+        '<meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />',
+      );
       fs.rename(filePath, filePath + '.bak', (err) => {
         console.log('重命名成功');
       });
@@ -361,6 +359,8 @@ const sleep = (name, ms = 1000) =>
 
 // 执行
 const main = async () => {
+  // console.log(env, localMode, isAutoOpenZippedDir, isSkipCommit);
+
   const nodeCheck = await projectHelper.nodeVersionCheck();
   if (!nodeCheck) {
     console.log(`请使用 14 以上的 node 版本`);
@@ -385,7 +385,9 @@ const main = async () => {
 
   const taskProcess = async (currProject) => {
     const task = new TaskController(currProject);
-    await task.pushLocal();
+    if (!isSkipCommit) {
+      await task.pushLocal();
+    }
     await task.checkout();
     await task.build();
     if (!isProduction) {
@@ -394,15 +396,14 @@ const main = async () => {
     await task.backGitBranch();
   };
 
-  // await Promise.all(rootFolders.map(process));
   for (let i = 0; i < rootFolders.length; i++) {
     const item = rootFolders[i];
     await sleep(item);
     await taskProcess(item);
   }
 
-  if (!isProduction) {
-    projectHelper.removeIndexCors();
+  if (isProduction) {
+    projectHelper.portalIndexAddCors();
   }
   if (!CONFIG.build.localMode) {
     await gitHelper.pushLocal(path.join(basePath, buildPath), true);
