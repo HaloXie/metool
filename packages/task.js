@@ -65,7 +65,7 @@ const isProduction = env === 'production';
 
 // todo
 const isSkipCommit = allArgs.includes('--skip-commit');
-const isAutoOpenZippedDir = allArgs.includes('--open');
+const isOpenZippedDir = allArgs.includes('--open');
 
 //
 const exec = promisify(child_process.exec);
@@ -287,6 +287,10 @@ const projectHelper = {
     const command = `zip -rq ../${fileName}.zip ./ ${CONFIG.build.localMode ? '' : '-x *.git*'} `;
     await execute(command, workDir);
   },
+  async openZippedDir() {
+    const command = `open .`;
+    await execute(command);
+  },
 };
 
 class TaskController {
@@ -409,6 +413,9 @@ const main = async () => {
     await gitHelper.pushLocal(path.join(basePath, buildPath), true);
   }
   await projectHelper.zip();
+  if (isOpenZippedDir) {
+    await projectHelper.openZippedDir();
+  }
 
   console.log('============= completed =================');
   process.exit(0);
