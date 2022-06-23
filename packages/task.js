@@ -118,7 +118,7 @@ const throwError = (errMsg) => {
   console.error('任务自动退出，原因是: ' + errMsg);
   process.exit(1);
 };
-const formatDate = (time, format = 'YY-MM-DD hh:mm:ss') => {
+const formatDate = (time, format = 'YY-MM-DD-hhmmss') => {
   const date = new Date(time);
   const year = date.getFullYear(),
     month = date.getMonth() + 1, //月份是从0开始的
@@ -210,7 +210,7 @@ const gitHelper = {
     return !result; // 如果存在说明已经合并过了，不需要再次合并
   },
   async merge(branch, projectPath) {
-    const command = `git merge ${branch} --no-ff -m 'merge commit ${branch}'`;
+    const command = `git merge ${branch} --no-ff -m 'merge commit ${branch} via task.js'`;
     try {
       await execute(command, projectPath);
     } catch (error) {
@@ -273,7 +273,7 @@ const projectHelper = {
   async copyDist(projectPath, projectName) {
     const srcPath = CONFIG.projects.output;
     const mapName = CONFIG.projects.nameMap.find((item) => item.project === projectName).name;
-    const target = path.join(basePath, `${buildPath}/${mapName}`);
+    const target = path.join(basePath, `${buildPath}/dist/${mapName}`);
     // 如果存在则先删除
     if (fs.existsSync(target)) {
       await this.emptyFolder('', target);
@@ -386,8 +386,6 @@ const sleep = (name, ms = 1000) =>
 
 // 执行
 const main = async () => {
-  // console.log(env, localMode, isAutoOpenZippedDir, isSkipCommit);
-
   const nodeCheck = await projectHelper.nodeVersionCheck();
   if (!nodeCheck) {
     console.log(`请使用 14 以上的 node 版本`);
